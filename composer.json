@@ -1,0 +1,32 @@
+{
+  "name": "jncinet/laravel-byte-dance",
+  "description": "Laravel extension package for douyin,toutiao,xigua",
+  "keywords": [
+    "laravel",
+    "bytedance",
+    "douyin",
+    "xigua",
+    "toutiao"
+  ],
+  "homepage": "https://www.qihucms.com",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "zhangye",
+      "email": "y@qilephp.com"
+    }
+  ],
+  "require": {},
+  "autoload": {
+    "psr-4": {
+      "Jncinet\\LaravelByteDance\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Jncinet\\LaravelByteDance\\ByteDanceServiceProvider"
+      ]
+    }
+  }
+}

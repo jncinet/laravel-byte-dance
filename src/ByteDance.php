@@ -3,6 +3,7 @@
 namespace Jncinet\LaravelByteDance;
 
 use Illuminate\Support\Str;
+use Jncinet\LaravelByteDance\Exceptions\InvalidGatewayException;
 
 /**
  * Class ByteDance
@@ -12,26 +13,28 @@ use Illuminate\Support\Str;
 class ByteDance
 {
     /**
-     * Dynamically pass methods to the application.
-     *
-     * @param string $name
-     * @param array $arguments
-     *
+     * @param $name
      * @return mixed
+     * @throws InvalidGatewayException
      */
-    public static function __callStatic($name, $arguments)
+    public static function __callStatic($name)
     {
-        return self::make($name, ...$arguments);
+        return self::make($name);
     }
 
     /**
      * @param $name
-     * @param $config
      * @return mixed
+     * @throws InvalidGatewayException
      */
-    protected static function make($name, ...$config)
+    protected static function make($name)
     {
         $application = __NAMESPACE__ . '\\GateWays\\' . Str::studly($name) . '\\Application';
-        return new $application($config);
+
+        if (class_exists($application)) {
+            return new $application();
+        }
+
+        throw new InvalidGatewayException("Gateway [{$name}] Not Exists");
     }
 }

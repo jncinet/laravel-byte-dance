@@ -6,7 +6,10 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Storage;
 use Psr\Http\Message\ResponseInterface;
 
-
+/**
+ * Class BaseClient
+ * @package Jncinet\LaravelByteDance\Kernel
+ */
 class BaseClient
 {
     protected $http, $block_size, $account_type, $client_key, $client_secret;

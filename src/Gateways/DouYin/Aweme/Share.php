@@ -1,6 +1,6 @@
 <?php
 
-namespace ncinet\LaravelByteDance\Gateways\DouYin\Aweme;
+namespace Jncinet\LaravelByteDance\Gateways\DouYin\Aweme;
 
 use Jncinet\LaravelByteDance\Kernel\BaseClient;
 

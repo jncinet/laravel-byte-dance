@@ -11,10 +11,20 @@ use Illuminate\Support\Str;
  */
 class Application
 {
+    /**
+     * @param $method
+     * @param $config
+     * @return mixed
+     * @throws \Exception
+     */
     public function __call($method, $config)
     {
         $method = __NAMESPACE__ . '\\' . Str::studly($method) . '\\Application';
 
-        return new $method($config);
+        if (class_exists($method)) {
+            return new $method($config);
+        }
+
+        throw new \Exception('232', 1001);
     }
 }

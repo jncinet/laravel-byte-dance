@@ -1,7 +1,7 @@
 ## Laravel-byte-dance （部份接口）
 
 ```shell
-$ composer require jncinet/Laravel-byte-dance
+$ composer require jncinet/laravel-byte-dance
 ```
 
 ### 示例

@@ -16,7 +16,10 @@
       "email": "y@qilephp.com"
     }
   ],
-  "require": {},
+  "require": {
+    "simplesoftwareio/simple-qrcode": "^2.0",
+    "guzzlehttp/guzzle": "^6.2 || ^7.0"
+  },
   "autoload": {
     "psr-4": {
       "Jncinet\\LaravelByteDance\\": "src/"

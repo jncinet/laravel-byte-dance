@@ -2,6 +2,7 @@
 
 namespace Jncinet\LaravelByteDance\Gateways\DouYin\Video;
 
+use Jncinet\LaravelByteDance\Exceptions\UploadException;
 use Jncinet\LaravelByteDance\Kernel\BaseClient;
 
 /**
@@ -46,14 +47,14 @@ class Create extends BaseClient
      * @param array $fields
      * @return mixed|null
      * @throws \GuzzleHttp\Exception\GuzzleException
-     * @throws \Exception
+     * @throws UploadException
      */
     public function publish(array $fields = [])
     {
         $upload_response = $this->uploading();
 
         if (!$this->isSuccess($upload_response)) {
-            throw new \Exception('文件上传失败', 1);
+            throw new UploadException('upload_fail');
         }
 
         $fields['video_id'] = $upload_response['data']['video']['video_id'];
@@ -76,7 +77,7 @@ class Create extends BaseClient
      *
      * @return mixed|null
      * @throws \GuzzleHttp\Exception\GuzzleException
-     * @throws \Exception
+     * @throws UploadException
      */
     public function uploading()
     {
@@ -84,14 +85,14 @@ class Create extends BaseClient
         if ($this->isLocal($this->filename)) {
             $file = fopen($this->filename, 'rb');
             if ($file === false) {
-                throw new \Exception('文件无法打开', 1);
+                throw new UploadException('open', ['filename' => $this->filename]);
             }
             // 文件类型
             $f_info = finfo_open(FILEINFO_MIME);
             $this->mime = finfo_file($f_info, $this->filename);
             finfo_close($f_info);
             if (empty($this->mime) || substr($this->mime, 0, 5) != 'video') {
-                throw new \Exception('文件必须为视频格式', 1);
+                throw new UploadException('not_video');
             }
             // 文件大小
             $stat = fstat($file);
@@ -101,7 +102,7 @@ class Create extends BaseClient
                 $file_stream = fread($file, $this->size);
                 fclose($file);
                 if ($file_stream === false) {
-                    throw new \Exception('文件读取失败', 1);
+                    throw new UploadException('read', ['filename' => $this->filename]);
                 }
                 // 上传到服务器
                 return $this->upload($file_stream);
@@ -109,7 +110,7 @@ class Create extends BaseClient
                 // 创建分片
                 $init = $this->makeBlock();
                 if (!$this->isSuccess($init)) {
-                    throw new \Exception('分片创建失败', 1);
+                    throw new UploadException('block_create');
                 }
                 // 上传分片
                 $uploaded = 0;
@@ -119,12 +120,12 @@ class Create extends BaseClient
                     $block_size = $this->blockSize($uploaded);
                     $file_stream = fread($file, $block_size);
                     if ($file_stream === false) {
-                        throw new \Exception('文件读取失败', 1);
+                        throw new UploadException('read', ['filename' => $this->filename]);
                     }
                     if ($this->isSuccess(
                         $this->uploadBlock($file_stream, $init['data']['upload_id'], $block_id)
                     )) {
-                        throw new \Exception('分片上传失败，分片ID：' . $block_id, 1);
+                        throw new UploadException('block_upload', ['block_id' => $block_id]);
                     }
                     $uploaded += $block_size;
                 }
@@ -132,7 +133,7 @@ class Create extends BaseClient
                 // 分片完成
                 $complete_response = $this->completeBlock($init['data']['upload_id']);
                 if (!$this->isSuccess($complete_response)) {
-                    throw new \Exception('分片上传未完成', 1);
+                    throw new UploadException('block_complete');
                 }
                 return $complete_response;
             }
@@ -140,21 +141,21 @@ class Create extends BaseClient
             // 读取数据
             $response = $this->http->request('GET', $this->filename, ['stream' => true]);
             if ($response->getReasonPhrase() != 'OK') {
-                throw new \Exception('远程文件访问失败', 1);
+                throw new UploadException('remote_open', ['filename' => $this->filename]);
             }
             // 文件类型
             $this->mime = $response->getHeader('Content-Type');
             if (isset($this->mime[0]) && substr($this->mime[0], 0, 5) == 'video') {
                 $this->mime = $this->mime[0];
             } else {
-                throw new \Exception('文件必须为视频格式', 1);
+                throw new UploadException('not_video');
             }
             // 文件大小
             $this->size = $response->getHeader('Content-Length');
             if (isset($this->size[0]) && $this->size[0] > 0) {
                 $this->size = $this->size[0];
             } else {
-                throw new \Exception('文件大小不正确', 1);
+                throw new UploadException('file_empty');
             }
             $file_stream = $response->getBody();
             if ($this->size <= $this->block_size) {
@@ -164,7 +165,7 @@ class Create extends BaseClient
                 // 创建分片
                 $init = $this->makeBlock();
                 if (!$this->isSuccess($init)) {
-                    throw new \Exception('分片创建失败', 1);
+                    throw new UploadException('block_create');
                 }
                 // 上传分片
                 $uploaded = 0;
@@ -174,12 +175,12 @@ class Create extends BaseClient
                     $block_size = $this->blockSize($uploaded);
                     $file_stream = $file_stream->read($block_size);
                     if ($file_stream === false) {
-                        throw new \Exception('文件读取失败', 1);
+                        throw new UploadException('read', ['filename' => $this->filename]);
                     }
                     if ($this->isSuccess(
                         $this->uploadBlock($file_stream, $init['data']['upload_id'], $block_id)
                     )) {
-                        throw new \Exception('分片上传失败，分片ID：' . $block_id, 1);
+                        throw new UploadException('block_upload', ['block_id' => $block_id]);
                     }
                     $uploaded += $block_size;
                 }
@@ -187,7 +188,7 @@ class Create extends BaseClient
                 // 分片完成
                 $complete_response = $this->completeBlock($init['data']['upload_id']);
                 if (!$this->isSuccess($complete_response)) {
-                    throw new \Exception('分片上传未完成', 1);
+                    throw new UploadException('block_complete');
                 }
                 return $complete_response;
             }

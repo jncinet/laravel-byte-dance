@@ -3,7 +3,7 @@
 namespace Jncinet\LaravelByteDance\Gateways\DouYin\Image;
 
 use Illuminate\Support\Str;
-use Jncinet\LaravelByteDance\Exceptions\InvalidGatewayException;
+use Jncinet\LaravelByteDance\Exceptions\GatewayException;
 
 /**
  * Class Application
@@ -17,7 +17,7 @@ class Application
      * @param $method
      * @param $arguments
      * @return mixed
-     * @throws InvalidGatewayException
+     * @throws GatewayException
      */
     public function __call($method, $arguments)
     {
@@ -28,7 +28,7 @@ class Application
      * @param $method
      * @param $arguments
      * @return mixed
-     * @throws InvalidGatewayException
+     * @throws GatewayException
      */
     protected function make($method, $arguments = [])
     {
@@ -38,6 +38,6 @@ class Application
             return new $method(...$arguments);
         }
 
-        throw new InvalidGatewayException("Gateway [{$method}] Not Exists");
+        throw new GatewayException('application_not_exists', ['method' => $method]);
     }
 }

@@ -3,7 +3,7 @@
 namespace Jncinet\LaravelByteDance;
 
 use Illuminate\Support\Str;
-use Jncinet\LaravelByteDance\Exceptions\InvalidGatewayException;
+use Jncinet\LaravelByteDance\Exceptions\GatewayException;
 
 /**
  * Class ByteDance
@@ -15,7 +15,7 @@ class ByteDance
     /**
      * @param $name
      * @return mixed
-     * @throws InvalidGatewayException
+     * @throws GatewayException
      */
     public static function __callStatic($name)
     {
@@ -25,7 +25,7 @@ class ByteDance
     /**
      * @param $name
      * @return mixed
-     * @throws InvalidGatewayException
+     * @throws GatewayException
      */
     protected static function make($name)
     {
@@ -35,6 +35,6 @@ class ByteDance
             return new $application();
         }
 
-        throw new InvalidGatewayException("Gateway [{$name}] Not Exists");
+        throw new GatewayException('not_exists', ['name' => $name]);
     }
 }

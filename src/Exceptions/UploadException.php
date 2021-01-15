@@ -2,15 +2,15 @@
 
 namespace Jncinet\LaravelByteDance\Exceptions;
 
-class InvalidGatewayException extends Exception
+class UploadException extends Exception
 {
     /**
-     * InvalidGatewayException constructor.
+     * UploadException constructor.
      * @param $message
      * @param array $raw
      */
     public function __construct($message, $raw = [])
     {
-        parent::__construct('INVALID_GATEWAY: '.$message, $raw, self::INVALID_GATEWAY);
+        parent::__construct('upload_' . $message, $raw, self::ERROR_UPLOAD);
     }
 }

@@ -2,17 +2,15 @@
 
 namespace Jncinet\LaravelByteDance\Exceptions;
 
-
 class GatewayException extends Exception
 {
     /**
-     * GatewayException constructor.
+     * InvalidGatewayException constructor.
      * @param $message
      * @param array $raw
-     * @param int $code
      */
-    public function __construct($message, $raw = [], $code = self::ERROR_GATEWAY)
+    public function __construct($message, $raw = [])
     {
-        parent::__construct('ERROR_GATEWAY: '.$message, $raw, $code);
+        parent::__construct('gateway_' . $message, $raw, self::GATEWAY);
     }
 }

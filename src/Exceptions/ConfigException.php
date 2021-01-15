@@ -2,16 +2,15 @@
 
 namespace Jncinet\LaravelByteDance\Exceptions;
 
-
-class InvalidArgumentException extends Exception
+class ConfigException extends Exception
 {
     /**
-     * InvalidArgumentException constructor.
+     * InvalidConfigException constructor.
      * @param $message
      * @param array $raw
      */
     public function __construct($message, $raw = [])
     {
-        parent::__construct('INVALID_ARGUMENT: '.$message, $raw, self::INVALID_ARGUMENT);
+        parent::__construct('config_' . $message, $raw, self::CONFIG);
     }
 }

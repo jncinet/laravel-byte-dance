@@ -2,6 +2,7 @@
 
 namespace Jncinet\LaravelByteDance\Gateways\DouYin\IM;
 
+use Jncinet\LaravelByteDance\Exceptions\UploadException;
 use Jncinet\LaravelByteDance\Kernel\BaseClient;
 
 /**
@@ -38,7 +39,7 @@ class Media extends BaseClient
      * @param bool $is_forever
      * @return mixed|null
      * @throws \GuzzleHttp\Exception\GuzzleException
-     * @throws \Exception
+     * @throws UploadException
      */
     public function upload($filename, $is_forever = false)
     {
@@ -50,7 +51,7 @@ class Media extends BaseClient
         if ($this->isLocal($filename)) {
             $file = fopen($filename, 'rb');
             if ($file === false) {
-                throw new \Exception('文件无法打开', 1);
+                throw new UploadException('open', ['filename' => $filename]);
             }
             // 文件类型
             $f_info = finfo_open(FILEINFO_MIME);
@@ -58,18 +59,18 @@ class Media extends BaseClient
             finfo_close($f_info);
             if (empty($mime) ||
                 (substr($mime, 0, 5) != 'image' && substr($mime, -4) != '/pdf')) {
-                throw new \Exception('文件必须为图片格式', 1);
+                throw new UploadException('not_image');
             }
             // 文件大小
             $stat = fstat($file);
             $size = $stat['size'];
             if (empty($size)) {
-                throw new \Exception('文件大小不正确', 1);
+                throw new UploadException('file_empty');
             }
             $file_stream = fread($file, $size);
             fclose($file);
             if ($file_stream === false) {
-                throw new \Exception('文件读取失败', 1);
+                throw new UploadException('read');
             }
             // 上传到服务器
             return $this->uploading($uri, $file_stream, $filename, $mime);
@@ -77,7 +78,7 @@ class Media extends BaseClient
             // 读取数据
             $response = $this->http->request('GET', $filename, ['stream' => true]);
             if ($response->getReasonPhrase() != 'OK') {
-                throw new \Exception('远程文件访问失败', 1);
+                throw new UploadException('remote_open', ['filename' => $filename]);
             }
             // 文件类型
             $mime = $response->getHeader('Content-Type');
@@ -85,14 +86,14 @@ class Media extends BaseClient
                 (substr($mime[0], 0, 5) == 'image' || substr($mime[0], -4) == '/pdf')) {
                 $mime = $mime[0];
             } else {
-                throw new \Exception('文件必须为图片或PDF格式', 1);
+                throw new UploadException('not_image_pdf');
             }
             // 文件大小
             $size = $response->getHeader('Content-Length');
             if (isset($size[0]) && $size[0] > 0) {
                 $size = $size[0];
             } else {
-                throw new \Exception('文件大小不正确', 1);
+                throw new UploadException('file_empty');
             }
             $file_stream = $response->getBody();
             // 上传到服务器

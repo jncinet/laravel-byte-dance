@@ -3,6 +3,7 @@
 namespace Jncinet\LaravelByteDance\Gateways\DouYin;
 
 use Illuminate\Support\Str;
+use Jncinet\LaravelByteDance\Exceptions\GatewayException;
 
 /**
  * Class Application
@@ -25,6 +26,6 @@ class Application
             return new $method($config);
         }
 
-        throw new \Exception('232', 1001);
+        throw new GatewayException('application_not_exists', ['method' => $method]);
     }
 }

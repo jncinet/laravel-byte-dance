@@ -2,6 +2,7 @@
 
 namespace Jncinet\LaravelByteDance\Gateways\DouYin\Image;
 
+use Jncinet\LaravelByteDance\Exceptions\UploadException;
 use Jncinet\LaravelByteDance\Kernel\BaseClient;
 
 /**
@@ -41,7 +42,7 @@ class Create extends BaseClient
         $upload_response = $this->uploading();
 
         if (!$this->isSuccess($upload_response)) {
-            throw new \Exception('文件上传失败', 1);
+            throw new UploadException('upload_fail');
         }
 
         $fields['image_id'] = $upload_response['data']['image']['image_id'];
@@ -64,32 +65,32 @@ class Create extends BaseClient
      *
      * @return mixed|null
      * @throws \GuzzleHttp\Exception\GuzzleException
-     * @throws \Exception
+     * @throws UploadException
      */
     public function uploading()
     {
         if ($this->isLocal($this->filename)) {
             $file = fopen($this->filename, 'rb');
             if ($file === false) {
-                throw new \Exception('文件无法打开', 1);
+                throw new UploadException('open', ['filename' => $this->filename]);
             }
             // 文件类型
             $f_info = finfo_open(FILEINFO_MIME);
             $this->mime = finfo_file($f_info, $this->filename);
             finfo_close($f_info);
             if (empty($this->mime) || substr($this->mime, 0, 5) != 'image') {
-                throw new \Exception('文件必须为图片格式', 1);
+                throw new UploadException('not_image');
             }
             // 文件大小
             $stat = fstat($file);
             $this->size = $stat['size'];
             if (empty($this->size)) {
-                throw new \Exception('文件大小不正确', 1);
+                throw new UploadException('file_empty');
             }
             $file_stream = fread($file, $this->size);
             fclose($file);
             if ($file_stream === false) {
-                throw new \Exception('文件读取失败', 1);
+                throw new UploadException('read', ['filename' => $this->filename]);
             }
             // 上传到服务器
             return $this->upload($file_stream);
@@ -97,21 +98,21 @@ class Create extends BaseClient
             // 读取数据
             $response = $this->http->request('GET', $this->filename, ['stream' => true]);
             if ($response->getReasonPhrase() != 'OK') {
-                throw new \Exception('远程文件访问失败', 1);
+                throw new UploadException('remote_open', ['filename' => $this->filename]);
             }
             // 文件类型
             $this->mime = $response->getHeader('Content-Type');
             if (isset($this->mime[0]) && substr($this->mime[0], 0, 5) == 'image') {
                 $this->mime = $this->mime[0];
             } else {
-                throw new \Exception('文件必须为图片格式', 1);
+                throw new UploadException('not_image');
             }
             // 文件大小
             $this->size = $response->getHeader('Content-Length');
             if (isset($this->size[0]) && $this->size[0] > 0) {
                 $this->size = $this->size[0];
             } else {
-                throw new \Exception('文件大小不正确', 1);
+                throw new UploadException('file_empty', ['filename' => $this->filename]);
             }
             $file_stream = $response->getBody();
             // 上传到服务器

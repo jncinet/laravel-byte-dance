@@ -7,6 +7,13 @@ use Jncinet\LaravelByteDance\Exceptions\GatewayException;
 
 /**
  * Class Application
+ * @method Aweme\Application Aweme()
+ * @method IM\Application IM()
+ * @method Image\Application Image()
+ * @method MiniProgram\Application MiniProgram()
+ * @method OAuth\Application OAuth()
+ * @method POI\Application POI()
+ * @method User\Application User()
  * @method Video\Application Video()
  * @package Jncinet\LaravelByteDance\Gateways\DouYin
  */

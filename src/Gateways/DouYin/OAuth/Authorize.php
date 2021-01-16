@@ -2,7 +2,7 @@
 
 namespace Jncinet\LaravelByteDance\Gateways\DouYin\OAuth;
 
-use Jncinet\EasyVideo\Support;
+use Jncinet\LaravelByteDance\Kernel\Support;
 use Jncinet\LaravelByteDance\Kernel\BaseClient;
 
 /**
@@ -47,7 +47,7 @@ class Authorize extends BaseClient
         } else {
             $this->url = self::URL[0];
         }
-        $this->url .= http_build_query($params);
+        $this->url .= '?' . http_build_query($params);
     }
 
     /**
@@ -66,7 +66,7 @@ class Authorize extends BaseClient
      * @param $params
      * @return mixed
      */
-    public function getQrCode($params)
+    public function getQrCode($params = [])
     {
         return Support::makeQrCode($this->url, $params);
     }

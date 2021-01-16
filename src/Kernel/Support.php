@@ -17,7 +17,7 @@ class Support
      */
     public static function makeQrCode($text, $params = [])
     {
-        $qrCode = QrCode::size($params['size'] ?? 360)->format($params['format'] ?? 'png');
+        $qrCode = QrCode::format($params['format'] ?? 'png');
 
         if (array_key_exists('margin', $params)) {
             $qrCode = $qrCode->margin($params['margin']);
@@ -42,7 +42,7 @@ class Support
             $qrCode = $qrCode->merge($params['merge']);
         }
 
-        return $qrCode->generate($text, $params['filename'] ?? null);
+        return $qrCode->size($params['size'] ?? 360)->generate($text, $params['filename'] ?? null);
     }
 
     /**

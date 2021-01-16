@@ -14,10 +14,11 @@ class ByteDance
 {
     /**
      * @param $name
+     * @param $arguments
      * @return mixed
      * @throws GatewayException
      */
-    public static function __callStatic($name)
+    public static function __callStatic($name, $arguments)
     {
         return self::make($name);
     }

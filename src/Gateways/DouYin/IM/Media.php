@@ -155,27 +155,13 @@ class Media extends BaseClient
      */
     protected function uploading($uri, $fileStream, $filename, $mime)
     {
-        $response = $this->http->request(
-            'POST',
-            $uri,
-            [
-                'query' => [
-                    'open_id' => $this->open_id,
-                    'access_token' => $this->access_token
-                ],
-                'headers' => [
-                    'Content-Type' => 'multipart/form-data'
-                ],
-                'multipart' => [
-                    [
-                        'name' => 'media',
-                        'contents' => $fileStream,
-                        'headers' => ['Content-Type' => $mime],
-                        'filename' => basename($filename)
-                    ]
-                ]
-            ]
-        );
+        $uri = $uri . '?' . http_build_query([
+                'open_id' => $this->open_id,
+                'access_token' => $this->access_token
+            ]);
+
+        $response = $this->multipartPost($uri, 'media', basename($filename),
+            $fileStream, $mime);
 
         return $this->getResponse($response);
     }

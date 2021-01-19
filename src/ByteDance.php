@@ -30,7 +30,7 @@ class ByteDance
      */
     protected static function make($name)
     {
-        $application = __NAMESPACE__ . '\\GateWays\\' . Str::studly($name) . '\\Application';
+        $application = __NAMESPACE__ . '\\Gateways\\' . Str::studly($name) . '\\Application';
 
         if (class_exists($application)) {
             return new $application();

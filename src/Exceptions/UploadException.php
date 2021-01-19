@@ -11,6 +11,6 @@ class UploadException extends Exception
      */
     public function __construct($message, $raw = [])
     {
-        parent::__construct('upload_' . $message, $raw, self::ERROR_UPLOAD);
+        parent::__construct('upload_' . $message, $raw, self::UPLOAD);
     }
 }

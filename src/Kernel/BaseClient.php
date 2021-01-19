@@ -3,6 +3,7 @@
 namespace Jncinet\LaravelByteDance\Kernel;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Facades\Storage;
 use Psr\Http\Message\ResponseInterface;
 
@@ -90,5 +91,50 @@ class BaseClient
     protected function isLocal($filename)
     {
         return empty(parse_url($filename, PHP_URL_SCHEME));
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param $url
+     * @param $name
+     * @param $fileName
+     * @param $fileBody
+     * @param null $mimeType
+     * @param array $options
+     * @param array $fields
+     * @param array $headers
+     * @return ResponseInterface
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
+    public function multipartPost($url, $name, $fileName, $fileBody,
+                                  $mimeType = null, $options = [], $fields = [], $headers = [])
+    {
+        $data = [];
+        $mimeBoundary = md5(microtime());
+
+        foreach ($fields as $key => $val) {
+            array_push($data, '--' . $mimeBoundary);
+            array_push($data, "Content-Disposition: form-data; name=\"$key\"");
+            array_push($data, '');
+            array_push($data, $val);
+        }
+
+        array_push($data, '--' . $mimeBoundary);
+        $finalMimeType = empty($mimeType) ? 'application/octet-stream' : $mimeType;
+        array_push($data, "Content-Disposition: form-data; name=\"$name\"; filename=\"$fileName\"");
+        array_push($data, "Content-Type: $finalMimeType");
+        array_push($data, '');
+        array_push($data, $fileBody);
+
+        array_push($data, '--' . $mimeBoundary . '--');
+        array_push($data, '');
+
+        $body = implode("\r\n", $data);
+
+        $contentType = 'multipart/form-data; boundary=' . $mimeBoundary;
+        $headers['Content-Type'] = $contentType;
+        $request = new Request('POST', $url, $headers, $body);
+        return $this->http->send($request, $options);
     }
 }

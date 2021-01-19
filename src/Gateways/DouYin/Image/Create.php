@@ -129,27 +129,13 @@ class Create extends BaseClient
      */
     protected function upload($fileStream)
     {
-        $response = $this->http->request(
-            'POST',
-            self::URL['upload'],
-            [
-                'query' => [
-                    'open_id' => $this->open_id,
-                    'access_token' => $this->access_token
-                ],
-                'headers' => [
-                    'Content-Type' => 'multipart/form-data'
-                ],
-                'multipart' => [
-                    [
-                        'name' => 'image',
-                        'contents' => $fileStream,
-                        'headers' => ['Content-Type' => $this->mime],
-                        'filename' => basename($this->filename)
-                    ]
-                ]
-            ]
-        );
+        $url = self::URL['upload'] . '?' . http_build_query([
+                'open_id' => $this->open_id,
+                'access_token' => $this->access_token
+            ]);
+
+        $response = $this->multipartPost($url, 'image', basename($this->filename),
+            $fileStream, $this->mime);
 
         return $this->getResponse($response);
     }

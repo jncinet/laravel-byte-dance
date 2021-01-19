@@ -4,6 +4,7 @@ namespace Jncinet\LaravelByteDance\Gateways\DouYin\Video;
 
 use Jncinet\LaravelByteDance\Exceptions\UploadException;
 use Jncinet\LaravelByteDance\Kernel\BaseClient;
+use GuzzleHttp\Psr7\MultipartStream;
 
 /**
  * Class Create
@@ -204,27 +205,13 @@ class Create extends BaseClient
      */
     protected function upload($fileStream)
     {
-        $response = $this->http->request(
-            'POST',
-            self::URL['upload'],
-            [
-                'query' => [
-                    'open_id' => $this->open_id,
-                    'access_token' => $this->access_token
-                ],
-                'headers' => [
-                    'Content-Type' => 'multipart/form-data'
-                ],
-                'multipart' => [
-                    [
-                        'name' => 'video',
-                        'contents' => $fileStream,
-                        'headers' => ['Content-Type' => $this->mime],
-                        'filename' => basename($this->filename)
-                    ]
-                ]
-            ]
-        );
+        $url = self::URL['upload'] . '?' . http_build_query([
+                'open_id' => $this->open_id,
+                'access_token' => $this->access_token
+            ]);
+
+        $response = $this->multipartPost($url, 'video', basename($this->filename),
+            $fileStream, $this->mime);
 
         return $this->getResponse($response);
     }

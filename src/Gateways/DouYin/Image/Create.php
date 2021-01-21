@@ -22,6 +22,14 @@ class Create extends BaseClient
     protected $mime;
     protected $size;
 
+    /**
+     * Create constructor.
+     * @param $open_id
+     * @param $access_token
+     * @param $filename
+     * @throws UploadException
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
     public function __construct($open_id, $access_token, $filename)
     {
         parent::__construct();
@@ -41,7 +49,9 @@ class Create extends BaseClient
     {
         $upload_response = $this->uploading();
 
-        if (!$this->isSuccess($upload_response)) {
+        if ($this->isSuccess($upload_response)) {
+            $this->deleteTempFile();
+        } else {
             throw new UploadException('upload_fail');
         }
 
@@ -69,55 +79,30 @@ class Create extends BaseClient
      */
     public function uploading()
     {
-        if ($this->isLocal($this->filename)) {
-            $file = fopen($this->filename, 'rb');
-            if ($file === false) {
-                throw new UploadException('open', ['filename' => $this->filename]);
-            }
-            // 文件类型
-            $f_info = finfo_open(FILEINFO_MIME);
-            $this->mime = finfo_file($f_info, $this->filename);
-            finfo_close($f_info);
-            if (empty($this->mime) || substr($this->mime, 0, 5) != 'image') {
-                throw new UploadException('not_image');
-            }
-            // 文件大小
-            $stat = fstat($file);
-            $this->size = $stat['size'];
-            if (empty($this->size)) {
-                throw new UploadException('file_empty');
-            }
-            $file_stream = fread($file, $this->size);
-            fclose($file);
-            if ($file_stream === false) {
-                throw new UploadException('read', ['filename' => $this->filename]);
-            }
-            // 上传到服务器
-            return $this->upload($file_stream);
-        } else {
-            // 读取数据
-            $response = $this->http->request('GET', $this->filename, ['stream' => true]);
-            if ($response->getReasonPhrase() != 'OK') {
-                throw new UploadException('remote_open', ['filename' => $this->filename]);
-            }
-            // 文件类型
-            $this->mime = $response->getHeader('Content-Type');
-            if (isset($this->mime[0]) && substr($this->mime[0], 0, 5) == 'image') {
-                $this->mime = $this->mime[0];
-            } else {
-                throw new UploadException('not_image');
-            }
-            // 文件大小
-            $this->size = $response->getHeader('Content-Length');
-            if (isset($this->size[0]) && $this->size[0] > 0) {
-                $this->size = $this->size[0];
-            } else {
-                throw new UploadException('file_empty', ['filename' => $this->filename]);
-            }
-            $file_stream = $response->getBody();
-            // 上传到服务器
-            return $this->upload($file_stream->read($this->size));
+        $file = fopen($this->filename, 'rb');
+        if ($file === false) {
+            throw new UploadException('open', ['filename' => $this->filename]);
         }
+        // 文件类型
+        $f_info = finfo_open(FILEINFO_MIME);
+        $this->mime = finfo_file($f_info, $this->filename);
+        finfo_close($f_info);
+        if (empty($this->mime) || substr($this->mime, 0, 5) != 'image') {
+            throw new UploadException('not_image');
+        }
+        // 文件大小
+        $stat = fstat($file);
+        $this->size = $stat['size'];
+        if (empty($this->size)) {
+            throw new UploadException('file_empty');
+        }
+        $file_stream = fread($file, $this->size);
+        fclose($file);
+        if ($file_stream === false) {
+            throw new UploadException('read', ['filename' => $this->filename]);
+        }
+        // 上传到服务器
+        return $this->upload($file_stream);
     }
 
     /**

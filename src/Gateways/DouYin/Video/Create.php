@@ -4,7 +4,6 @@ namespace Jncinet\LaravelByteDance\Gateways\DouYin\Video;
 
 use Jncinet\LaravelByteDance\Exceptions\UploadException;
 use Jncinet\LaravelByteDance\Kernel\BaseClient;
-use GuzzleHttp\Psr7\MultipartStream;
 
 /**
  * Class Create
@@ -27,10 +26,12 @@ class Create extends BaseClient
     protected $size;            // 当前文件大小
 
     /**
-     * Video constructor.
-     * @param string $open_id
-     * @param string $access_token
-     * @param string $filename
+     * Create constructor.
+     * @param $open_id
+     * @param $access_token
+     * @param $filename
+     * @throws UploadException
+     * @throws \GuzzleHttp\Exception\GuzzleException
      */
     public function __construct($open_id, $access_token, $filename)
     {
@@ -52,9 +53,13 @@ class Create extends BaseClient
      */
     public function publish(array $fields = [])
     {
+        // 上传文件
         $upload_response = $this->uploading();
 
-        if (!$this->isSuccess($upload_response)) {
+        // 上传验证，成功后删除临时文件
+        if ($this->isSuccess($upload_response)) {
+            $this->deleteTempFile();
+        } else {
             throw new UploadException('upload_fail');
         }
 
@@ -82,118 +87,59 @@ class Create extends BaseClient
      */
     public function uploading()
     {
-        // 判断是否本地文件，不同方式读取视频流
-        if ($this->isLocal($this->filename)) {
-            $file = fopen($this->filename, 'rb');
-            if ($file === false) {
-                throw new UploadException('open', ['filename' => $this->filename]);
-            }
-            // 文件类型
-            $f_info = finfo_open(FILEINFO_MIME);
-            $this->mime = finfo_file($f_info, $this->filename);
-            finfo_close($f_info);
-            if (empty($this->mime) || substr($this->mime, 0, 5) != 'video') {
-                throw new UploadException('not_video');
-            }
-            // 文件大小
-            $stat = fstat($file);
-            $this->size = $stat['size'];
-            // 判断是否需要分片上传
-            if ($this->size <= $this->block_size) {
-                $file_stream = fread($file, $this->size);
-                fclose($file);
-                if ($file_stream === false) {
-                    throw new UploadException('read', ['filename' => $this->filename]);
-                }
-                // 上传到服务器
-                return $this->upload($file_stream);
-            } else {
-                // 创建分片
-                $init = $this->makeBlock();
-                if (!$this->isSuccess($init)) {
-                    throw new UploadException('block_create');
-                }
-                // 上传分片
-                $uploaded = 0;
-                $block_id = 0;
-                while ($uploaded < $this->size) {
-                    $block_id++;
-                    $block_size = $this->blockSize($uploaded);
-                    $file_stream = fread($file, $block_size);
-                    if ($file_stream === false) {
-                        throw new UploadException('read', ['filename' => $this->filename]);
-                    }
-                    if ($this->isSuccess(
-                        $this->uploadBlock($file_stream, $init['data']['upload_id'], $block_id)
-                    )) {
-                        throw new UploadException('block_upload', ['block_id' => $block_id]);
-                    }
-                    $uploaded += $block_size;
-                }
-                fclose($file);
-                // 分片完成
-                $complete_response = $this->completeBlock($init['data']['upload_id']);
-                if (!$this->isSuccess($complete_response)) {
-                    throw new UploadException('block_complete');
-                }
-                return $complete_response;
-            }
-        } else {
-            // 读取数据
-            $response = $this->http->request('GET', $this->filename, ['stream' => true]);
-            if ($response->getReasonPhrase() != 'OK') {
-                throw new UploadException('remote_open', ['filename' => $this->filename]);
-            }
-            // 文件类型
-            $this->mime = $response->getHeader('Content-Type');
-            if (isset($this->mime[0]) && substr($this->mime[0], 0, 5) == 'video') {
-                $this->mime = $this->mime[0];
-            } else {
-                throw new UploadException('not_video');
-            }
-            // 文件大小
-            $this->size = $response->getHeader('Content-Length');
-            if (isset($this->size[0]) && $this->size[0] > 0) {
-                $this->size = $this->size[0];
-            } else {
-                throw new UploadException('file_empty');
-            }
-            $file_stream = $response->getBody();
-            if ($this->size <= $this->block_size) {
-                // 上传到服务器
-                return $this->upload($file_stream->read($this->size));
-            } else {
-                // 创建分片
-                $init = $this->makeBlock();
-                if (!$this->isSuccess($init)) {
-                    throw new UploadException('block_create');
-                }
-                // 上传分片
-                $uploaded = 0;
-                $block_id = 0;
-                while ($uploaded < $this->size) {
-                    $block_id++;
-                    $block_size = $this->blockSize($uploaded);
-                    $file_stream = $file_stream->read($block_size);
-                    if ($file_stream === false) {
-                        throw new UploadException('read', ['filename' => $this->filename]);
-                    }
-                    if ($this->isSuccess(
-                        $this->uploadBlock($file_stream, $init['data']['upload_id'], $block_id)
-                    )) {
-                        throw new UploadException('block_upload', ['block_id' => $block_id]);
-                    }
-                    $uploaded += $block_size;
-                }
-                $file_stream->close();
-                // 分片完成
-                $complete_response = $this->completeBlock($init['data']['upload_id']);
-                if (!$this->isSuccess($complete_response)) {
-                    throw new UploadException('block_complete');
-                }
-                return $complete_response;
-            }
+        $file = fopen($this->filename, 'rb');
+        if ($file === false) {
+            throw new UploadException('open', ['filename' => $this->filename]);
         }
+        // 文件类型
+        $f_info = finfo_open(FILEINFO_MIME);
+        $this->mime = finfo_file($f_info, $this->filename);
+        finfo_close($f_info);
+        if (empty($this->mime) || substr($this->mime, 0, 5) != 'video') {
+            throw new UploadException('not_video');
+        }
+        // 文件大小
+        $stat = fstat($file);
+        $this->size = $stat['size'];
+        // 判断是否需要分片上传
+        if ($this->size <= $this->block_size) {
+            $file_stream = fread($file, $this->size);
+            fclose($file);
+            if ($file_stream === false) {
+                throw new UploadException('read', ['filename' => $this->filename]);
+            }
+            // 上传到服务器
+            return $this->upload($file_stream);
+        }
+        // 创建分片
+        $init = $this->makeBlock();
+        if (!$this->isSuccess($init)) {
+            throw new UploadException('block_create');
+        }
+        // 上传分片
+        $uploaded = 0;
+        $block_id = 0;
+        while ($uploaded < $this->size) {
+            $block_id++;
+            $block_size = $this->blockSize($uploaded);
+            $file_stream = fread($file, $block_size);
+            if ($file_stream === false) {
+                throw new UploadException('read', ['filename' => $this->filename]);
+            }
+            if (!$this->isSuccess(
+                $this->uploadBlock($file_stream, $init['data']['upload_id'], $block_id)
+            )) {
+                throw new UploadException('block_upload', ['block_id' => $block_id]);
+            }
+            $uploaded += $block_size;
+        }
+        fclose($file);
+        // 分片完成
+        $complete_response = $this->completeBlock($init['data']['upload_id']);
+        if (!$this->isSuccess($complete_response)) {
+            throw new UploadException('block_complete');
+        }
+        return $complete_response;
     }
 
     /**
@@ -245,29 +191,15 @@ class Create extends BaseClient
      */
     protected function uploadBlock($fileStream, $upload_id, $block_id)
     {
-        $response = $this->http->request(
-            'POST',
-            self::URL['part_upload'],
-            [
-                'query' => [
-                    'open_id' => $this->open_id,
-                    'access_token' => $this->access_token,
-                    'upload_id' => $upload_id,
-                    'part_number' => $block_id,
-                ],
-                'headers' => [
-                    'Content-Type' => 'multipart/form-data'
-                ],
-                'multipart' => [
-                    [
-                        'name' => 'video',
-                        'contents' => $fileStream,
-                        'headers' => ['Content-Type' => $this->mime],
-                        'filename' => basename($this->filename)
-                    ]
-                ]
-            ]
-        );
+        $url = self::URL['part_upload'] . '?' . http_build_query([
+                'open_id' => $this->open_id,
+                'access_token' => $this->access_token,
+                'upload_id' => $upload_id,
+                'part_number' => $block_id,
+            ]);
+
+        $response = $this->multipartPost($url, 'video', basename($this->filename),
+            $fileStream, $this->mime);
 
         return $this->getResponse($response);
     }

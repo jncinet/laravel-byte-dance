@@ -48,57 +48,36 @@ class Media extends BaseClient
         // 上传永久素材或临时素格
         $uri = $is_forever ? self::URL['forever'] : self::URL['temp'];
 
-        if ($this->isLocal($filename)) {
-            $file = fopen($filename, 'rb');
-            if ($file === false) {
-                throw new UploadException('open', ['filename' => $filename]);
-            }
-            // 文件类型
-            $f_info = finfo_open(FILEINFO_MIME);
-            $mime = finfo_file($f_info, $filename);
-            finfo_close($f_info);
-            if (empty($mime) ||
-                (substr($mime, 0, 5) != 'image' && substr($mime, -4) != '/pdf')) {
-                throw new UploadException('not_image');
-            }
-            // 文件大小
-            $stat = fstat($file);
-            $size = $stat['size'];
-            if (empty($size)) {
-                throw new UploadException('file_empty');
-            }
-            $file_stream = fread($file, $size);
-            fclose($file);
-            if ($file_stream === false) {
-                throw new UploadException('read');
-            }
-            // 上传到服务器
-            return $this->uploading($uri, $file_stream, $filename, $mime);
-        } else {
-            // 读取数据
-            $response = $this->http->request('GET', $filename, ['stream' => true]);
-            if ($response->getReasonPhrase() != 'OK') {
-                throw new UploadException('remote_open', ['filename' => $filename]);
-            }
-            // 文件类型
-            $mime = $response->getHeader('Content-Type');
-            if (isset($mime[0]) &&
-                (substr($mime[0], 0, 5) == 'image' || substr($mime[0], -4) == '/pdf')) {
-                $mime = $mime[0];
-            } else {
-                throw new UploadException('not_image_pdf');
-            }
-            // 文件大小
-            $size = $response->getHeader('Content-Length');
-            if (isset($size[0]) && $size[0] > 0) {
-                $size = $size[0];
-            } else {
-                throw new UploadException('file_empty');
-            }
-            $file_stream = $response->getBody();
-            // 上传到服务器
-            return $this->uploading($uri, $file_stream->read($size), $filename, $mime);
+        $file = fopen($filename, 'rb');
+        if ($file === false) {
+            throw new UploadException('open', ['filename' => $filename]);
         }
+        // 文件类型
+        $f_info = finfo_open(FILEINFO_MIME);
+        $mime = finfo_file($f_info, $filename);
+        finfo_close($f_info);
+        if (empty($mime) ||
+            (substr($mime, 0, 5) != 'image' && substr($mime, -4) != '/pdf')) {
+            throw new UploadException('not_image');
+        }
+        // 文件大小
+        $stat = fstat($file);
+        $size = $stat['size'];
+        if (empty($size)) {
+            throw new UploadException('file_empty');
+        }
+        $file_stream = fread($file, $size);
+        fclose($file);
+        if ($file_stream === false) {
+            throw new UploadException('read');
+        }
+        // 上传到服务器
+        $result = $this->uploading($uri, $file_stream, $filename, $mime);
+
+        if ($this->isSuccess($result)) {
+            $this->deleteTempFile();
+        }
+        return $result;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace Jncinet\LaravelByteDance\Kernel;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Facades\Storage;
+use Jncinet\LaravelByteDance\Exceptions\UploadException;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -13,7 +14,7 @@ use Psr\Http\Message\ResponseInterface;
  */
 class BaseClient
 {
-    protected $http, $block_size, $account_type, $client_key, $client_secret;
+    protected $http, $block_size, $account_type, $client_key, $client_secret, $tempFile = null;
 
     /**
      * Base constructor.
@@ -49,23 +50,57 @@ class BaseClient
      * 格式化文件名
      *
      * @param $filename
-     * @return string
+     * @return null|string
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws UploadException
      */
     protected function formatFilename($filename)
     {
         if ($this->isLocal($filename)) {
             $storageDiskName = config('filesystems.default');
-            if ($storageDiskName === 'public' || $storageDiskName === 'local') {
+            if (config('filesystems.disks.' . $storageDiskName . '.driver') == 'local') {
                 // 本地存储时转换为文件完整路径
-                return storage_path(
-                    config('filesystems.disks.' . $storageDiskName . '.root')
-                    . DIRECTORY_SEPARATOR . $filename);
+                return config('filesystems.disks.' . $storageDiskName . '.root')
+                    . DIRECTORY_SEPARATOR . $filename;
+            }
+
+            // 如果不是本地存储统一转换为网络地址
+            $filename = Storage::url($filename);
+        }
+
+        $suffix = '.';
+        $suffix .= pathinfo($filename, PATHINFO_EXTENSION);
+        $newFilename = 'temp' . DIRECTORY_SEPARATOR . md5($filename) . $suffix;
+        // 如果已经保存过，不再重复下载
+        if (!Storage::disk('public')->exists($newFilename)) {
+            // 远程文件，先验证文件小于4G（4294967296），保存到本地 storage_path('app/public/temp/filename.suffix')
+            $response = $this->http->request('GET', $filename, ['stream' => true]);
+            if ($response->getReasonPhrase() === 'OK') {
+                // 创建本地文件，发布完成后会删除此文件
+                if (Storage::disk('public')->put($newFilename, $response->getBody())) {
+                    $this->tempFile = $newFilename;
+                } else {
+                    throw new UploadException('read', ['filename' => $filename]);
+                }
             } else {
-                // 如果不是本地存储统一转换为网络地址
-                return Storage::url($filename);
+                throw new UploadException('remote_open', ['filename' => $filename]);
             }
         }
-        return $filename;
+
+        return config('filesystems.disks.public.root') . DIRECTORY_SEPARATOR . $newFilename;
+    }
+
+    /**
+     * 删除临时文件
+     *
+     * @return bool|null
+     */
+    protected function deleteTempFile()
+    {
+        if (!empty($this->tempFile)) {
+            return Storage::disk('public')->delete($this->tempFile);
+        }
+        return null;
     }
 
     /**

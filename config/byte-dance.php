@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'timeout' => 5.0,
+    'timeout' => env('BYTE_DANCE_TIMEOUT', 30.30),
 
     'block_size' => env('BYTE_DANCE_BLOCK_SIZE', 20971520),
     // 普通号：individual，企业号：enterprise，服务商：service
